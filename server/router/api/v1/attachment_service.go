@@ -45,10 +45,6 @@ const (
 	defaultJPEGQuality = 95
 )
 
-var SupportedThumbnailMimeTypes = []string{
-	"image/png",
-	"image/jpeg",
-}
 
 // exifCapableImageTypes defines image formats that may contain EXIF metadata.
 // These formats will have their EXIF metadata stripped on upload for privacy.

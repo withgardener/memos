@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,10 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/disintegration/imaging"
 	"github.com/labstack/echo/v5"
 	"github.com/pkg/errors"
-	"golang.org/x/sync/semaphore"
 
 	"github.com/usememos/memos/internal/profile"
 	"github.com/usememos/memos/internal/util"
@@ -29,15 +26,6 @@ import (
 
 // Constants for file serving configuration.
 const (
-	// ThumbnailCacheFolder is the folder name where thumbnail images are stored.
-	ThumbnailCacheFolder = ".thumbnail_cache"
-
-	// thumbnailMaxSize is the maximum dimension (width or height) for thumbnails.
-	thumbnailMaxSize = 600
-
-	// maxConcurrentThumbnails limits concurrent thumbnail generation to prevent memory exhaustion.
-	maxConcurrentThumbnails = 3
-
 	// cacheMaxAge is the max-age value for Cache-Control headers (1 year).
 	cacheMaxAge = "public, max-age=31536000"
 )
@@ -55,15 +43,6 @@ var xssUnsafeTypes = map[string]bool{
 	"image/svg+xml":            true,
 }
 
-// thumbnailSupportedTypes contains image MIME types that support thumbnail generation.
-var thumbnailSupportedTypes = map[string]bool{
-	"image/png":  true,
-	"image/jpeg": true,
-	"image/heic": true,
-	"image/heif": true,
-	"image/webp": true,
-}
-
 // avatarAllowedTypes contains MIME types allowed for user avatars.
 var avatarAllowedTypes = map[string]bool{
 	"image/png":  true,
@@ -75,15 +54,6 @@ var avatarAllowedTypes = map[string]bool{
 	"image/heif": true,
 }
 
-// SupportedThumbnailMimeTypes is the exported list of thumbnail-supported MIME types.
-var SupportedThumbnailMimeTypes = []string{
-	"image/png",
-	"image/jpeg",
-	"image/heic",
-	"image/heif",
-	"image/webp",
-}
-
 // dataURIRegex parses data URI format: data:image/png;base64,iVBORw0KGgo...
 var dataURIRegex = regexp.MustCompile(`^data:(?P<type>[^;]+);base64,(?P<base64>.+)`)
 
@@ -92,18 +62,14 @@ type FileServerService struct {
 	Profile       *profile.Profile
 	Store         *store.Store
 	authenticator *auth.Authenticator
-
-	// thumbnailSemaphore limits concurrent thumbnail generation.
-	thumbnailSemaphore *semaphore.Weighted
 }
 
 // NewFileServerService creates a new file server service.
 func NewFileServerService(profile *profile.Profile, store *store.Store, secret string) *FileServerService {
 	return &FileServerService{
-		Profile:            profile,
-		Store:              store,
-		authenticator:      auth.NewAuthenticator(store, secret),
-		thumbnailSemaphore: semaphore.NewWeighted(maxConcurrentThumbnails),
+		Profile:       profile,
+		Store:         store,
+		authenticator: auth.NewAuthenticator(store, secret),
 	}
 }
 
@@ -122,7 +88,6 @@ func (s *FileServerService) RegisterRoutes(echoServer *echo.Echo) {
 func (s *FileServerService) serveAttachmentFile(c *echo.Context) error {
 	ctx := c.Request().Context()
 	uid := c.Param("uid")
-	wantThumbnail := c.QueryParam("thumbnail") == "true"
 
 	attachment, err := s.Store.GetAttachment(ctx, &store.FindAttachment{
 		UID:     &uid,
@@ -146,7 +111,7 @@ func (s *FileServerService) serveAttachmentFile(c *echo.Context) error {
 		return s.serveMediaStream(c, attachment, contentType)
 	}
 
-	return s.serveStaticFile(c, attachment, contentType, wantThumbnail)
+	return s.serveStaticFile(c, attachment, contentType)
 }
 
 // serveUserAvatar serves user avatar images.
@@ -215,19 +180,10 @@ func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.
 }
 
 // serveStaticFile serves non-streaming files (images, documents, etc.).
-func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.Attachment, contentType string, wantThumbnail bool) error {
+func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.Attachment, contentType string) error {
 	blob, err := s.getAttachmentBlob(attachment)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get attachment blob").Wrap(err)
-	}
-
-	// Generate thumbnail for supported image types.
-	if wantThumbnail && thumbnailSupportedTypes[attachment.Type] {
-		if thumbnailBlob, err := s.getOrGenerateThumbnail(c.Request().Context(), attachment); err != nil {
-			slog.Warn("failed to get thumbnail", "error", err)
-		} else {
-			blob = thumbnailBlob
-		}
 	}
 
 	setSecurityHeaders(c)
@@ -373,95 +329,6 @@ func (s *FileServerService) getS3PresignedURL(ctx context.Context, attachment *s
 		return "", errors.Wrap(err, "failed to presign URL")
 	}
 	return url, nil
-}
-
-// =============================================================================
-// Thumbnail Generation
-// =============================================================================
-
-// getOrGenerateThumbnail returns the thumbnail image of the attachment.
-// Uses semaphore to limit concurrent thumbnail generation and prevent memory exhaustion.
-func (s *FileServerService) getOrGenerateThumbnail(ctx context.Context, attachment *store.Attachment) ([]byte, error) {
-	thumbnailPath, err := s.getThumbnailPath(attachment)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fast path: return cached thumbnail if exists.
-	if blob, err := s.readCachedThumbnail(thumbnailPath); err == nil {
-		return blob, nil
-	}
-
-	// Acquire semaphore to limit concurrent generation.
-	if err := s.thumbnailSemaphore.Acquire(ctx, 1); err != nil {
-		return nil, errors.Wrap(err, "failed to acquire semaphore")
-	}
-	defer s.thumbnailSemaphore.Release(1)
-
-	// Double-check after acquiring semaphore (another goroutine may have generated it).
-	if blob, err := s.readCachedThumbnail(thumbnailPath); err == nil {
-		return blob, nil
-	}
-
-	return s.generateThumbnail(attachment, thumbnailPath)
-}
-
-// getThumbnailPath returns the file path for a cached thumbnail.
-func (s *FileServerService) getThumbnailPath(attachment *store.Attachment) (string, error) {
-	cacheFolder := filepath.Join(s.Profile.Data, ThumbnailCacheFolder)
-	if err := os.MkdirAll(cacheFolder, os.ModePerm); err != nil {
-		return "", errors.Wrap(err, "failed to create thumbnail cache folder")
-	}
-	filename := fmt.Sprintf("%d%s", attachment.ID, filepath.Ext(attachment.Filename))
-	return filepath.Join(cacheFolder, filename), nil
-}
-
-// readCachedThumbnail reads a thumbnail from the cache directory.
-func (*FileServerService) readCachedThumbnail(path string) ([]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	return io.ReadAll(file)
-}
-
-// generateThumbnail creates a new thumbnail and saves it to disk.
-func (s *FileServerService) generateThumbnail(attachment *store.Attachment, thumbnailPath string) ([]byte, error) {
-	reader, err := s.getAttachmentReader(attachment)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get attachment reader")
-	}
-	defer reader.Close()
-
-	img, err := imaging.Decode(reader, imaging.AutoOrientation(true))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode image")
-	}
-
-	width, height := img.Bounds().Dx(), img.Bounds().Dy()
-	thumbnailWidth, thumbnailHeight := calculateThumbnailDimensions(width, height)
-
-	thumbnailImage := imaging.Resize(img, thumbnailWidth, thumbnailHeight, imaging.Lanczos)
-
-	if err := imaging.Save(thumbnailImage, thumbnailPath); err != nil {
-		return nil, errors.Wrap(err, "failed to save thumbnail")
-	}
-
-	return s.readCachedThumbnail(thumbnailPath)
-}
-
-// calculateThumbnailDimensions calculates the target dimensions for a thumbnail.
-// The largest dimension is constrained to thumbnailMaxSize while maintaining aspect ratio.
-// Small images are not enlarged.
-func calculateThumbnailDimensions(width, height int) (int, int) {
-	if max(width, height) <= thumbnailMaxSize {
-		return width, height
-	}
-	if width >= height {
-		return thumbnailMaxSize, 0 // Landscape: constrain width.
-	}
-	return 0, thumbnailMaxSize // Portrait: constrain height.
 }
 
 // =============================================================================

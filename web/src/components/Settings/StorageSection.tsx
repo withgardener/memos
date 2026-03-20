@@ -55,6 +55,9 @@ const StorageSection = () => {
     return !isEqual(originalSetting, instanceStorageSetting);
   }, [instanceStorageSetting, originalSetting]);
 
+  // Force display type to S3 — database and local are disabled in the UI.
+  const effectiveStorageType = InstanceSetting_StorageSetting_StorageType.S3;
+
   const handleMaxUploadSizeChanged = async (event: React.FocusEvent<HTMLInputElement>) => {
     let num = parseInt(event.target.value);
     if (Number.isNaN(num)) {
@@ -154,19 +157,19 @@ const StorageSection = () => {
       <SettingGroup title={t("setting.storage-section.current-storage")}>
         <div className="w-full">
           <RadioGroup
-            value={String(instanceStorageSetting.storageType)}
+            value={String(effectiveStorageType)}
             onValueChange={(value) => {
               handleStorageTypeChanged(Number(value) as InstanceSetting_StorageSetting_StorageType);
             }}
             className="flex flex-row gap-4"
           >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value={String(InstanceSetting_StorageSetting_StorageType.DATABASE)} id="database" />
-              <Label htmlFor="database">{t("setting.storage-section.type-database")}</Label>
+              <RadioGroupItem value={String(InstanceSetting_StorageSetting_StorageType.DATABASE)} id="database" disabled />
+              <Label htmlFor="database" className="opacity-40 cursor-not-allowed">{t("setting.storage-section.type-database")}</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value={String(InstanceSetting_StorageSetting_StorageType.LOCAL)} id="local" />
-              <Label htmlFor="local">{t("setting.storage-section.type-local")}</Label>
+              <RadioGroupItem value={String(InstanceSetting_StorageSetting_StorageType.LOCAL)} id="local" disabled />
+              <Label htmlFor="local" className="opacity-40 cursor-not-allowed">{t("setting.storage-section.type-local")}</Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value={String(InstanceSetting_StorageSetting_StorageType.S3)} id="s3" />
@@ -183,19 +186,10 @@ const StorageSection = () => {
           />
         </SettingRow>
 
-        {instanceStorageSetting.storageType !== InstanceSetting_StorageSetting_StorageType.DATABASE && (
-          <SettingRow label={t("setting.storage-section.filepath-template")}>
-            <Input
-              className="w-64"
-              value={instanceStorageSetting.filepathTemplate}
-              placeholder="assets/{timestamp}_{filename}"
-              onChange={handleFilepathTemplateChanged}
-            />
-          </SettingRow>
-        )}
+        {/* filepath template is not used in S3 mode */}
       </SettingGroup>
 
-      {instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.S3 && (
+      {effectiveStorageType === InstanceSetting_StorageSetting_StorageType.S3 && (
         <SettingGroup title="S3 Configuration" showSeparator>
           <SettingRow label="Access key id">
             <Input className="w-64" value={instanceStorageSetting.s3Config?.accessKeyId} onChange={handleS3ConfigAccessKeyIdChanged} />
