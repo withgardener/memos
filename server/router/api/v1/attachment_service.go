@@ -402,7 +402,7 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 		if err != nil {
 			return errors.Wrap(err, "Failed to upload via s3 client")
 		}
-		presignURL, err := s3Client.PresignGetObject(ctx, key, create.Filename, "public, max-age=31536000")
+		presignURL, err := s3Client.PresignGetObject(ctx, key)
 		if err != nil {
 			return errors.Wrap(err, "Failed to presign via s3 client")
 		}

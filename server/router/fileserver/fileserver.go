@@ -368,7 +368,7 @@ func (s *FileServerService) getS3PresignedURL(ctx context.Context, attachment *s
 		return "", err
 	}
 
-	url, err := client.PresignGetObject(ctx, s3Object.Key, attachment.Filename, cacheMaxAge)
+	url, err := client.PresignGetObject(ctx, s3Object.Key)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to presign URL")
 	}
