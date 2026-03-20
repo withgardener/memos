@@ -66,17 +66,15 @@ func (c *Client) UploadObject(ctx context.Context, key string, fileType string, 
 }
 
 // PresignGetObject presigns an object in S3.
-func (c *Client) PresignGetObject(ctx context.Context, key string, filename string, cacheControl string) (string, error) {
+func (c *Client) PresignGetObject(ctx context.Context, key string) (string, error) {
 	presignClient := s3.NewPresignClient(c.Client)
 	presignResult, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
-		Bucket:                     aws.String(*c.Bucket),
-		Key:                        aws.String(key),
-		ResponseContentDisposition: aws.String(fmt.Sprintf("inline; filename=%q", filename)),
-		ResponseCacheControl:       aws.String(cacheControl),
+		Bucket: aws.String(*c.Bucket),
+		Key:    aws.String(key),
 	}, func(opts *s3.PresignOptions) {
-		// Set the expiration time of the presigned URL to 5 days.
+		// Set the expiration time of the presigned URL to 1 day.
 		// Reference: https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
-		opts.Expires = time.Duration(5 * 24 * time.Hour)
+		opts.Expires = 24 * time.Hour
 	})
 	if err != nil {
 		return "", errors.Wrap(err, "failed to presign get object")

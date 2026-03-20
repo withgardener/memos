@@ -81,9 +81,9 @@ func (r *Runner) CheckAndPresign(ctx context.Context) {
 			}
 
 			if s3ObjectPayload.LastPresignedTime != nil {
-				// Skip if the presigned URL is still valid for the next 4 days.
-				// The expiration time is set to 5 days.
-				if time.Now().Before(s3ObjectPayload.LastPresignedTime.AsTime().Add(4 * 24 * time.Hour)) {
+				// Skip if the presigned URL was refreshed within the last 12 hours.
+				// The expiration time is set to 1 day; runner interval is 12h.
+				if time.Now().Before(s3ObjectPayload.LastPresignedTime.AsTime().Add(12 * time.Hour)) {
 					continue
 				}
 			}
@@ -103,7 +103,7 @@ func (r *Runner) CheckAndPresign(ctx context.Context) {
 				continue
 			}
 
-			presignURL, err := s3Client.PresignGetObject(ctx, s3ObjectPayload.Key, attachment.Filename, "public, max-age=31536000")
+			presignURL, err := s3Client.PresignGetObject(ctx, s3ObjectPayload.Key)
 			if err != nil {
 				slog.Error("Failed to presign URL", "error", err, "attachmentID", attachment.ID)
 				continue
