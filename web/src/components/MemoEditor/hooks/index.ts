@@ -2,6 +2,7 @@
 export { useAutoSave } from "./useAutoSave";
 export { useBlobUrls } from "./useBlobUrls";
 export { useDragAndDrop } from "./useDragAndDrop";
+export { useEagerUpload } from "./useEagerUpload";
 export { useFileUpload } from "./useFileUpload";
 export { useFocusMode } from "./useFocusMode";
 export { useKeyboard } from "./useKeyboard";
