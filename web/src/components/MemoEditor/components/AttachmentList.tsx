@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronUpIcon, FileIcon, PaperclipIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, FileIcon, LoaderIcon, PaperclipIcon, XIcon } from "lucide-react";
 import type { FC } from "react";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
@@ -21,14 +21,17 @@ const AttachmentItemCard: FC<{
   canMoveUp?: boolean;
   canMoveDown?: boolean;
 }> = ({ item, onRemove, onMoveUp, onMoveDown, canMoveUp = true, canMoveDown = true }) => {
-  const { category, filename, thumbnailUrl, mimeType, size } = item;
+  const { category, filename, thumbnailUrl, mimeType, size, status } = item;
   const fileTypeLabel = getFileTypeLabel(mimeType);
   const fileSizeLabel = size ? formatFileSize(size) : undefined;
+  const isUploading = status === "uploading";
 
   return (
     <div className="relative flex items-center gap-1.5 px-1.5 py-1 rounded border border-transparent hover:border-border hover:bg-accent/20 transition-all">
       <div className="shrink-0 w-6 h-6 rounded overflow-hidden bg-muted/40 flex items-center justify-center">
-        {category === "image" && thumbnailUrl ? (
+        {isUploading ? (
+          <LoaderIcon className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+        ) : category === "image" && thumbnailUrl ? (
           <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" />
         ) : (
           <FileIcon className="w-3.5 h-3.5 text-muted-foreground" />

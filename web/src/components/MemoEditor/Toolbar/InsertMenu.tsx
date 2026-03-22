@@ -1,7 +1,7 @@
 import { LatLng } from "leaflet";
 import { uniqBy } from "lodash-es";
 import { FileIcon, LinkIcon, LoaderIcon, type LucideIcon, MapPinIcon, Maximize2Icon, MoreHorizontalIcon, PlusIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "react-use";
 import { useReverseGeocoding } from "@/components/map";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,13 @@ import {
   DropdownMenuTrigger,
   useDropdownMenuSubHoverDelay,
 } from "@/components/ui/dropdown-menu";
+import { toast } from "react-hot-toast";
+import { handleError } from "@/lib/error";
 import type { MemoRelation } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { LinkMemoDialog, LocationDialog } from "../components";
 import { useFileUpload, useLinkMemo, useLocation } from "../hooks";
+import { uploadService } from "../services";
 import { useEditorContext } from "../state";
 import type { InsertMenuProps } from "../types";
 import type { LocalFile } from "../types/attachment";
@@ -37,8 +40,29 @@ const InsertMenu = (props: InsertMenuProps) => {
     setMoreSubmenuOpen,
   );
 
+  const activeUploadsRef = useRef(0);
+
   const { fileInputRef, selectingFlag, handleFileInputChange, handleUploadClick } = useFileUpload((newFiles: LocalFile[]) => {
-    newFiles.forEach((file) => dispatch(actions.addLocalFile(file)));
+    newFiles.forEach(async (file) => {
+      dispatch(actions.addLocalFile(file));
+      activeUploadsRef.current++;
+      dispatch(actions.setLoading("uploading", true));
+      try {
+        const attachment = await uploadService.uploadFile(file.file);
+        dispatch(actions.removeLocalFile(file.id));
+        dispatch(actions.addAttachment(attachment));
+      } catch (error) {
+        dispatch(actions.updateLocalFile(file.id, { status: "error" }));
+        handleError(error, toast.error, {
+          context: "Failed to upload file",
+        });
+      } finally {
+        activeUploadsRef.current--;
+        if (activeUploadsRef.current === 0) {
+          dispatch(actions.setLoading("uploading", false));
+        }
+      }
+    });
   });
 
   const linkMemo = useLinkMemo({

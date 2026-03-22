@@ -44,9 +44,14 @@ export const editorActions = {
     payload: file,
   }),
 
-  removeLocalFile: (previewUrl: string): EditorAction => ({
+  updateLocalFile: (id: string, patch: Partial<LocalFile>): EditorAction => ({
+    type: "UPDATE_LOCAL_FILE",
+    payload: { id, patch },
+  }),
+
+  removeLocalFile: (id: string): EditorAction => ({
     type: "REMOVE_LOCAL_FILE",
-    payload: previewUrl,
+    payload: id,
   }),
 
   clearLocalFiles: (): EditorAction => ({

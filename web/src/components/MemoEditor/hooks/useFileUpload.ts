@@ -6,14 +6,16 @@ export const useFileUpload = (onFilesSelected: (localFiles: LocalFile[]) => void
   const selectingFlagRef = useRef(false);
 
   const handleFileInputChange = (event?: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(fileInputRef.current?.files || event?.target.files || []);
+    const files = Array.from(fileInputRef.current?.files || event?.target.files || []) as File[];
     if (files.length === 0 || selectingFlagRef.current) {
       return;
     }
     selectingFlagRef.current = true;
     const localFiles: LocalFile[] = files.map((file) => ({
+      id: Math.random().toString(36).substring(7),
       file,
       previewUrl: URL.createObjectURL(file),
+      status: "uploading",
     }));
     onFilesSelected(localFiles);
     selectingFlagRef.current = false;

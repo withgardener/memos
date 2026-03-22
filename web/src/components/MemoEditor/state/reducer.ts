@@ -68,10 +68,24 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         localFiles: [...state.localFiles, action.payload],
       };
 
+    case "UPDATE_LOCAL_FILE":
+      return {
+        ...state,
+        localFiles: state.localFiles.map((f) => {
+          if (f.id === action.payload.id) {
+            return {
+              ...f,
+              ...action.payload.patch,
+            };
+          }
+          return f;
+        }),
+      };
+
     case "REMOVE_LOCAL_FILE":
       return {
         ...state,
-        localFiles: state.localFiles.filter((f) => f.previewUrl !== action.payload),
+        localFiles: state.localFiles.filter((f) => f.id !== action.payload),
       };
 
     case "CLEAR_LOCAL_FILES":

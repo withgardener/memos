@@ -9,20 +9,23 @@ export const uploadService = {
     if (localFiles.length === 0) return [];
 
     const attachments: Attachment[] = [];
-
     for (const { file } of localFiles) {
-      const buffer = new Uint8Array(await file.arrayBuffer());
-      const attachment = await attachmentServiceClient.createAttachment({
-        attachment: create(AttachmentSchema, {
-          filename: file.name,
-          size: BigInt(file.size),
-          type: file.type,
-          content: buffer,
-        }),
-      });
+      const attachment = await this.uploadFile(file);
       attachments.push(attachment);
     }
-
     return attachments;
+  },
+
+  async uploadFile(file: File): Promise<Attachment> {
+    const buffer = new Uint8Array(await file.arrayBuffer());
+    const attachment = await attachmentServiceClient.createAttachment({
+      attachment: create(AttachmentSchema, {
+        filename: file.name,
+        size: BigInt(file.size),
+        type: file.type,
+        content: buffer,
+      }),
+    });
+    return attachment;
   },
 };
