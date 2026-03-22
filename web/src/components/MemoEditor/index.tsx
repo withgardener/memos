@@ -12,7 +12,7 @@ import { convertVisibilityFromString } from "@/utils/memo";
 import { EditorContent, EditorMetadata, EditorToolbar, FocusModeExitButton, FocusModeOverlay, TimestampPopover } from "./components";
 import { FOCUS_MODE_STYLES } from "./constants";
 import type { EditorRefActions } from "./Editor";
-import { useAutoSave, useEagerUpload, useFocusMode, useKeyboard, useMemoInit } from "./hooks";
+import { useAutoSave, useFocusMode, useKeyboard, useMemoInit } from "./hooks";
 import { cacheService, errorService, memoService, validationService } from "./services";
 import { EditorProvider, useEditorContext } from "./state";
 import type { MemoEditorProps } from "./types";
@@ -49,9 +49,6 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
 
   // Auto-save content to localStorage
   useAutoSave(state.content, currentUser?.name ?? "", cacheKey);
-
-  // Start uploading selected files to S3 immediately rather than waiting for publish
-  useEagerUpload();
 
   // Focus mode management with body scroll lock
   useFocusMode(state.ui.isFocusMode);
