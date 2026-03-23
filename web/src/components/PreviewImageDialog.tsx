@@ -12,9 +12,10 @@ interface Props {
   imgUrls: string[];
   initialIndex?: number;
   blurredStates?: boolean[];
+  initialRevealed?: boolean;
 }
 
-function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0, blurredStates = [] }: Props) {
+function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0, blurredStates = [], initialRevealed = false }: Props) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [revealed, setRevealed] = useState(false);
   const t = useTranslate();
@@ -25,8 +26,18 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0, blu
   }, [initialIndex]);
 
   useEffect(() => {
-    setRevealed(false);
-  }, [open, currentIndex]);
+    if (!open) {
+      setRevealed(false);
+      return;
+    }
+    setRevealed(initialRevealed);
+  }, [open, initialIndex, initialRevealed]);
+
+  useEffect(() => {
+    if (open && currentIndex !== initialIndex) {
+      setRevealed(false);
+    }
+  }, [open, currentIndex, initialIndex]);
 
   // Handle keyboard navigation
   useEffect(() => {

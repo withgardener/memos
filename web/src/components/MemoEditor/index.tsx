@@ -71,8 +71,9 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
 
     try {
       const result = await memoService.save(state, { memoName, parentMemoName });
+      const hasEffectiveChanges = result.hasChanges || state.ui.hasImmediateChanges;
 
-      if (!result.hasChanges) {
+      if (!hasEffectiveChanges) {
         toast.error(t("editor.no-changes-detected"));
         onCancel?.();
         return;

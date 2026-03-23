@@ -8,6 +8,7 @@ import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { getAttachmentType, isAttachmentBlurred, withAttachmentBlurState } from "@/utils/attachment";
 import { formatFileSize, getFileTypeLabel } from "@/utils/format";
 import { useTranslate } from "@/utils/i18n";
+import { useEditorContext } from "../state";
 import type { LocalFile } from "../types/attachment";
 import { toAttachmentItems } from "../types/attachment";
 
@@ -126,6 +127,7 @@ const AttachmentItemCard: FC<{
 
 const AttachmentList: FC<AttachmentListProps> = ({ attachments, localFiles = [], onAttachmentsChange, onRemoveLocalFile }) => {
   const { mutateAsync: updateAttachmentBlur } = useUpdateAttachmentBlur();
+  const { actions, dispatch } = useEditorContext();
 
   if (attachments.length === 0 && localFiles.length === 0) {
     return null;
@@ -173,6 +175,7 @@ const AttachmentList: FC<AttachmentListProps> = ({ attachments, localFiles = [],
           currentAttachment.name === attachment.name ? withAttachmentBlurState(currentAttachment, blurred) : currentAttachment,
         ),
       );
+      dispatch(actions.setImmediateChanges(true));
     } catch (error) {
       handleError(error, toast.error, {
         context: "Failed to update attachment blur",

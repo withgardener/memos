@@ -62,6 +62,7 @@ const AttachmentIcon = (props: Props) => {
           imgUrls={previewImage.urls}
           initialIndex={previewImage.index}
           blurredStates={[isBlurred]}
+          initialRevealed={isBlurred}
         />
       </>
     );

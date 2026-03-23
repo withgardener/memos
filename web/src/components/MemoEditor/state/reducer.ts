@@ -9,6 +9,10 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         content: action.payload.content,
         metadata: action.payload.metadata,
         timestamps: action.payload.timestamps,
+        ui: {
+          ...state.ui,
+          hasImmediateChanges: false,
+        },
       };
 
     case "UPDATE_CONTENT":
@@ -100,6 +104,15 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         ui: {
           ...state.ui,
           isFocusMode: !state.ui.isFocusMode,
+        },
+      };
+
+    case "SET_IMMEDIATE_CHANGES":
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          hasImmediateChanges: action.payload,
         },
       };
 

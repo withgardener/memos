@@ -128,11 +128,12 @@ const DocsList = ({ attachments }: { attachments: Attachment[] }) => (
 const Divider = () => <div className="border-t mt-1 border-border opacity-60" />;
 
 const AttachmentList = ({ attachments }: AttachmentListProps) => {
-  const [previewImage, setPreviewImage] = useState<{ open: boolean; urls: string[]; index: number; mimeType?: string }>({
+  const [previewImage, setPreviewImage] = useState<{ open: boolean; urls: string[]; index: number; mimeType?: string; initialRevealed: boolean }>({
     open: false,
     urls: [],
     index: 0,
     mimeType: undefined,
+    initialRevealed: false,
   });
 
   const { visual, audio, docs } = useMemo(() => separateAttachments(attachments), [attachments]);
@@ -148,7 +149,8 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
   const handleImageClick = (imgUrl: string) => {
     const index = imageUrls.findIndex((url) => url === imgUrl);
     const mimeType = imageAttachments[index]?.type;
-    setPreviewImage({ open: true, urls: imageUrls, index, mimeType });
+    const blurred = imageBlurredStates[index] ?? false;
+    setPreviewImage({ open: true, urls: imageUrls, index, mimeType, initialRevealed: blurred });
   };
 
   const sections = [visual.length > 0, audio.length > 0, docs.length > 0];
@@ -178,6 +180,7 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
         imgUrls={previewImage.urls}
         initialIndex={previewImage.index}
         blurredStates={imageBlurredStates}
+        initialRevealed={previewImage.initialRevealed}
       />
     </>
   );
