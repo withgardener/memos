@@ -1,6 +1,6 @@
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import dayjs from "dayjs";
-import { ExternalLinkIcon, PaperclipIcon, SearchIcon, Trash } from "lucide-react";
+import { ExternalLinkIcon, Eye, EyeOff, PaperclipIcon, SearchIcon, Trash } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Link } from "react-router-dom";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { attachmentServiceClient } from "@/connect";
-import { useDeleteAttachment } from "@/hooks/useAttachmentQueries";
+import { useDeleteAttachment, useUpdateAttachmentBlur } from "@/hooks/useAttachmentQueries";
 import useDialog from "@/hooks/useDialog";
 import useLoading from "@/hooks/useLoading";
 import useMediaQuery from "@/hooks/useMediaQuery";
@@ -20,6 +20,7 @@ import i18n from "@/i18n";
 import { handleError } from "@/lib/error";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { useTranslate } from "@/utils/i18n";
+import { getAttachmentType, isAttachmentBlurred, withAttachmentBlurState } from "@/utils/attachment";
 
 const PAGE_SIZE = 50;
 
@@ -50,23 +51,44 @@ const filterAttachments = (attachments: Attachment[], searchQuery: string): Atta
 
 interface AttachmentItemProps {
   attachment: Attachment;
+  onToggleBlur: (attachment: Attachment) => void;
 }
 
-const AttachmentItem = ({ attachment }: AttachmentItemProps) => (
-  <div className="w-24 sm:w-32 h-auto flex flex-col justify-start items-start">
-    <div className="w-24 h-24 flex justify-center items-center sm:w-32 sm:h-32 border border-border overflow-clip rounded-xl cursor-pointer hover:shadow hover:opacity-80">
-      <AttachmentIcon attachment={attachment} strokeWidth={0.5} />
+const AttachmentItem = ({ attachment, onToggleBlur }: AttachmentItemProps) => {
+  const t = useTranslate();
+  const isImage = getAttachmentType(attachment) === "image/*";
+  const blurred = isAttachmentBlurred(attachment);
+
+  return (
+    <div className="w-24 sm:w-32 h-auto flex flex-col justify-start items-start">
+      <div className="relative w-24 h-24 flex justify-center items-center sm:w-32 sm:h-32 border border-border overflow-clip rounded-xl cursor-pointer hover:shadow hover:opacity-80">
+        <AttachmentIcon attachment={attachment} strokeWidth={0.5} />
+        {isImage && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleBlur(attachment);
+            }}
+            className="absolute top-1 right-1 rounded-full border border-border bg-background/90 p-1 text-muted-foreground shadow-sm hover:text-foreground"
+            title={blurred ? t("memo.unblur-image") : t("memo.blur-image")}
+            aria-label={blurred ? t("memo.unblur-image") : t("memo.blur-image")}
+          >
+            {blurred ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+          </button>
+        )}
+      </div>
+      <div className="w-full max-w-full flex flex-row justify-between items-center mt-1 px-1">
+        <p className="text-xs shrink text-muted-foreground truncate">{attachment.filename}</p>
+        {attachment.memo && (
+          <Link to={`/${attachment.memo}`} className="text-primary hover:opacity-80 transition-opacity shrink-0 ml-1" aria-label="View memo">
+            <ExternalLinkIcon className="w-3 h-3" />
+          </Link>
+        )}
+      </div>
     </div>
-    <div className="w-full max-w-full flex flex-row justify-between items-center mt-1 px-1">
-      <p className="text-xs shrink text-muted-foreground truncate">{attachment.filename}</p>
-      {attachment.memo && (
-        <Link to={`/${attachment.memo}`} className="text-primary hover:opacity-80 transition-opacity shrink-0 ml-1" aria-label="View memo">
-          <ExternalLinkIcon className="w-3 h-3" />
-        </Link>
-      )}
-    </div>
-  </div>
-);
+  );
+};
 
 const Attachments = () => {
   const t = useTranslate();
@@ -74,6 +96,7 @@ const Attachments = () => {
   const loadingState = useLoading();
   const deleteUnusedAttachmentsDialog = useDialog();
   const { mutateAsync: deleteAttachment } = useDeleteAttachment();
+  const { mutateAsync: updateAttachmentBlur } = useUpdateAttachmentBlur();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -185,6 +208,27 @@ const Attachments = () => {
     setSearchQuery(e.target.value);
   }, []);
 
+  const handleToggleBlur = useCallback(
+    async (attachment: Attachment) => {
+      const blurred = !isAttachmentBlurred(attachment);
+
+      try {
+        await updateAttachmentBlur({ attachment, blurred });
+        setAttachments((prev) =>
+          prev.map((currentAttachment) =>
+            currentAttachment.name === attachment.name ? withAttachmentBlurState(currentAttachment, blurred) : currentAttachment,
+          ),
+        );
+      } catch (error) {
+        handleError(error, toast.error, {
+          context: "Failed to update attachment blur",
+          fallbackMessage: "Failed to update attachment blur. Please try again.",
+        });
+      }
+    },
+    [updateAttachmentBlur],
+  );
+
   return (
     <section className="@container w-full max-w-5xl min-h-full flex flex-col justify-start items-center sm:pt-3 md:pt-6 pb-8">
       {!md && <MobileHeader />}
@@ -228,7 +272,7 @@ const Attachments = () => {
                             </div>
                             <div className="w-full max-w-[calc(100%-4rem)] sm:max-w-[calc(100%-6rem)] flex flex-row justify-start items-start gap-4 flex-wrap">
                               {attachments.map((attachment) => (
-                                <AttachmentItem key={attachment.name} attachment={attachment} />
+                                <AttachmentItem key={attachment.name} attachment={attachment} onToggleBlur={handleToggleBlur} />
                               ))}
                             </div>
                           </div>
@@ -254,7 +298,7 @@ const Attachments = () => {
                                 </div>
                               </div>
                               {unusedAttachments.map((attachment) => (
-                                <AttachmentItem key={attachment.name} attachment={attachment} />
+                                <AttachmentItem key={attachment.name} attachment={attachment} onToggleBlur={handleToggleBlur} />
                               ))}
                             </div>
                           </div>

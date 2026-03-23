@@ -32,6 +32,7 @@ type Attachment struct {
 	StorageType storepb.AttachmentStorageType
 	Reference   string
 	Payload     *storepb.AttachmentPayload
+	IsBlurred   bool
 
 	// The related memo ID.
 	MemoID *int32
@@ -64,6 +65,7 @@ type UpdateAttachment struct {
 	MemoID    *int32
 	Reference *string
 	Payload   *storepb.AttachmentPayload
+	IsBlurred *bool
 }
 
 type DeleteAttachment struct {
@@ -111,6 +113,25 @@ func (s *Store) UpdateAttachment(ctx context.Context, update *UpdateAttachment) 
 	if update.UID != nil && !base.UIDMatcher.MatchString(*update.UID) {
 		return errors.New("invalid uid")
 	}
+
+	if update.Payload != nil || update.IsBlurred != nil {
+		existingAttachment, err := s.GetAttachment(ctx, &FindAttachment{ID: &update.ID})
+		if err != nil {
+			return errors.Wrap(err, "failed to get attachment before payload update")
+		}
+		if existingAttachment == nil {
+			return errors.New("attachment not found")
+		}
+
+		if update.Payload == nil {
+			update.Payload = existingAttachment.Payload
+		}
+		if update.IsBlurred == nil {
+			isBlurred := existingAttachment.IsBlurred
+			update.IsBlurred = &isBlurred
+		}
+	}
+
 	return s.driver.UpdateAttachment(ctx, update)
 }
 

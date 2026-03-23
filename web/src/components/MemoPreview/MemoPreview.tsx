@@ -3,7 +3,7 @@ import { FileIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
-import { getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
+import { getAttachmentType, getAttachmentUrl, isAttachmentBlurred } from "@/utils/attachment";
 import MemoContent from "../MemoContent";
 import { MemoViewContext, type MemoViewContextValue } from "../MemoView/MemoViewContext";
 
@@ -40,7 +40,7 @@ const AttachmentThumbnails = ({ attachments }: { attachments: Attachment[] }) =>
           key={a.name}
           src={getAttachmentUrl(a)}
           alt={a.filename}
-          className="w-10 h-10 rounded border border-border object-cover bg-muted/40"
+          className={cn("w-10 h-10 rounded border border-border object-cover bg-muted/40", isAttachmentBlurred(a) && "blur-[30px]")}
           loading="lazy"
         />
       ))}

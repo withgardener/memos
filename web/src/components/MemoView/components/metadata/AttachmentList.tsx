@@ -1,7 +1,7 @@
 import { FileAudioIcon, FileIcon, PaperclipIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
-import { getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
+import { getAttachmentType, getAttachmentUrl, isAttachmentBlurred } from "@/utils/attachment";
 import { formatFileSize, getFileTypeLabel } from "@/utils/format";
 import PreviewImageDialog from "../../../PreviewImageDialog";
 import AttachmentCard from "./AttachmentCard";
@@ -139,6 +139,7 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
 
   const imageAttachments = useMemo(() => visual.filter(isImageAttachment), [visual]);
   const imageUrls = useMemo(() => imageAttachments.map(getAttachmentUrl), [imageAttachments]);
+  const imageBlurredStates = useMemo(() => imageAttachments.map((attachment) => isAttachmentBlurred(attachment)), [imageAttachments]);
 
   if (attachments.length === 0) {
     return null;
@@ -176,6 +177,7 @@ const AttachmentList = ({ attachments }: AttachmentListProps) => {
         onOpenChange={(open: boolean) => setPreviewImage((prev) => ({ ...prev, open }))}
         imgUrls={previewImage.urls}
         initialIndex={previewImage.index}
+        blurredStates={imageBlurredStates}
       />
     </>
   );

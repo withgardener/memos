@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
-import { getAttachmentType, getAttachmentUrl } from "@/utils/attachment";
+import { getAttachmentType, getAttachmentUrl, isAttachmentBlurred } from "@/utils/attachment";
 
 interface AttachmentCardProps {
   attachment: Attachment;
@@ -11,13 +11,14 @@ interface AttachmentCardProps {
 const AttachmentCard = ({ attachment, onClick, className }: AttachmentCardProps) => {
   const attachmentType = getAttachmentType(attachment);
   const sourceUrl = getAttachmentUrl(attachment);
+  const blurred = isAttachmentBlurred(attachment);
 
   if (attachmentType === "image/*") {
     return (
       <img
         src={sourceUrl}
         alt={attachment.filename}
-        className={cn("w-full h-full object-cover rounded-lg cursor-pointer", className)}
+        className={cn("w-full h-full object-cover rounded-lg cursor-pointer", blurred && "blur-[30px]", className)}
         onClick={onClick}
         loading="lazy"
       />

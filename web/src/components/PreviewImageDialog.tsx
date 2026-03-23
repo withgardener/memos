@@ -1,22 +1,32 @@
-import { X } from "lucide-react";
+import { Eye, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@/components/ui/visually-hidden";
+import { cn } from "@/lib/utils";
+import { useTranslate } from "@/utils/i18n";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   imgUrls: string[];
   initialIndex?: number;
+  blurredStates?: boolean[];
 }
 
-function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: Props) {
+function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0, blurredStates = [] }: Props) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [revealed, setRevealed] = useState(false);
+  const t = useTranslate();
 
   // Update current index when initialIndex prop changes
   useEffect(() => {
     setCurrentIndex(initialIndex);
   }, [initialIndex]);
+
+  useEffect(() => {
+    setRevealed(false);
+  }, [open, currentIndex]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -57,6 +67,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
 
   // Ensure currentIndex is within bounds
   const safeIndex = Math.max(0, Math.min(currentIndex, imgUrls.length - 1));
+  const isBlurred = blurredStates[safeIndex] ?? false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,6 +75,13 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
         className="!w-[100vw] !h-[100vh] !max-w-[100vw] !max-h-[100vw] p-0 border-0 shadow-none bg-transparent [&>button]:hidden"
         aria-describedby="image-preview-description"
       >
+        <VisuallyHidden>
+          <DialogTitle>{t("memo.image-preview-title")}</DialogTitle>
+        </VisuallyHidden>
+        <VisuallyHidden>
+          <DialogDescription>{t("memo.image-preview-description")}</DialogDescription>
+        </VisuallyHidden>
+
         {/* Close button */}
         <div className="fixed top-4 right-4 z-50">
           <Button
@@ -79,19 +97,33 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0 }: P
 
         {/* Image container */}
         <div className="w-full h-full flex items-center justify-center p-4 sm:p-8 overflow-auto" onClick={handleBackdropClick}>
-          <img
-            src={imgUrls[safeIndex]}
-            alt={`Preview image ${safeIndex + 1} of ${imgUrls.length}`}
-            className="max-w-full max-h-full object-contain select-none"
-            draggable={false}
-            loading="eager"
-            decoding="async"
-          />
+          <div className="relative flex items-center justify-center">
+            <img
+              src={imgUrls[safeIndex]}
+              alt={`Preview image ${safeIndex + 1} of ${imgUrls.length}`}
+              className={cn("max-w-full max-h-full object-contain select-none", isBlurred && !revealed && "blur-[30px]")}
+              draggable={false}
+              loading="eager"
+              decoding="async"
+            />
+            {isBlurred && !revealed && (
+              <Button
+                type="button"
+                onClick={() => setRevealed(true)}
+                variant="secondary"
+                className="absolute bg-popover/80 hover:bg-popover/90 backdrop-blur-sm"
+                aria-label={t("memo.show-image")}
+              >
+                <Eye className="h-4 w-4" />
+                {t("memo.show-image")}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Screen reader description */}
         <div id="image-preview-description" className="sr-only">
-          Image preview dialog. Press Escape to close or click outside the image.
+          {t("memo.image-preview-description")}
         </div>
       </DialogContent>
     </Dialog>

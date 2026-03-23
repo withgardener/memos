@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/usememos/memos/plugin/filter"
 	storepb "github.com/usememos/memos/proto/gen/store"
@@ -20,13 +19,9 @@ func (d *DB) CreateAttachment(ctx context.Context, create *store.Attachment) (*s
 	if create.StorageType != storepb.AttachmentStorageType_ATTACHMENT_STORAGE_TYPE_UNSPECIFIED {
 		storageType = create.StorageType.String()
 	}
-	payloadString := "{}"
-	if create.Payload != nil {
-		bytes, err := protojson.Marshal(create.Payload)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to marshal attachment payload")
-		}
-		payloadString = string(bytes)
+	payloadString, err := store.MarshalAttachmentPayload(create.Payload, create.IsBlurred)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal attachment payload")
 	}
 	args := []any{create.UID, create.Filename, create.Blob, create.Type, create.Size, create.CreatorID, create.MemoID, storageType, create.Reference, payloadString}
 
@@ -155,11 +150,12 @@ func (d *DB) ListAttachments(ctx context.Context, find *store.FindAttachment) ([
 			attachment.MemoID = &memoID.Int32
 		}
 		attachment.StorageType = storepb.AttachmentStorageType(storepb.AttachmentStorageType_value[storageType])
-		payload := &storepb.AttachmentPayload{}
-		if err := protojsonUnmarshaler.Unmarshal(payloadBytes, payload); err != nil {
+		payload, isBlurred, err := store.UnmarshalAttachmentPayload(payloadBytes)
+		if err != nil {
 			return nil, err
 		}
 		attachment.Payload = payload
+		attachment.IsBlurred = isBlurred
 		list = append(list, &attachment)
 	}
 
@@ -188,12 +184,16 @@ func (d *DB) UpdateAttachment(ctx context.Context, update *store.UpdateAttachmen
 	if v := update.Reference; v != nil {
 		set, args = append(set, "reference = "+placeholder(len(args)+1)), append(args, *v)
 	}
-	if v := update.Payload; v != nil {
-		bytes, err := protojson.Marshal(v)
+	if update.Payload != nil || update.IsBlurred != nil {
+		isBlurred := false
+		if update.IsBlurred != nil {
+			isBlurred = *update.IsBlurred
+		}
+		payloadString, err := store.MarshalAttachmentPayload(update.Payload, isBlurred)
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal attachment payload")
 		}
-		set, args = append(set, "payload = "+placeholder(len(args)+1)), append(args, string(bytes))
+		set, args = append(set, "payload = "+placeholder(len(args)+1)), append(args, payloadString)
 	}
 
 	stmt := `UPDATE attachment SET ` + strings.Join(set, ", ") + ` WHERE id = ` + placeholder(len(args)+1)

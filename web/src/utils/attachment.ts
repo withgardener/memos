@@ -1,5 +1,19 @@
 import { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 
+const ATTACHMENT_BLUR_FRAGMENT_KEY = "memos-blurred";
+
+const getLocalAttachmentPath = (attachment: Attachment) => `/file/${attachment.name}/${attachment.filename}`;
+
+const parseAttachmentUrl = (rawUrl: string) => new URL(rawUrl, window.location.origin);
+
+const serializeAttachmentUrl = (originalUrl: string, parsedUrl: URL): string => {
+  if (!originalUrl || originalUrl.startsWith("/")) {
+    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+  }
+
+  return parsedUrl.toString();
+};
+
 export const getAttachmentUrl = (attachment: Attachment) => {
   if (attachment.externalLink) {
     return attachment.externalLink;
@@ -40,6 +54,42 @@ export const getAttachmentType = (attachment: Attachment) => {
   } else {
     return "application/octet-stream";
   }
+};
+
+export const isAttachmentBlurred = (attachment: Attachment) => {
+  if (!attachment.externalLink) {
+    return false;
+  }
+
+  try {
+    const parsedUrl = parseAttachmentUrl(attachment.externalLink);
+    const fragmentParams = new URLSearchParams(parsedUrl.hash.replace(/^#/, ""));
+    return fragmentParams.get(ATTACHMENT_BLUR_FRAGMENT_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
+export const withAttachmentBlurState = (attachment: Attachment, blurred: boolean): Attachment => {
+  const originalUrl = attachment.externalLink || getLocalAttachmentPath(attachment);
+  const parsedUrl = parseAttachmentUrl(originalUrl);
+  const fragmentParams = new URLSearchParams(parsedUrl.hash.replace(/^#/, ""));
+
+  if (blurred) {
+    fragmentParams.set(ATTACHMENT_BLUR_FRAGMENT_KEY, "1");
+  } else {
+    fragmentParams.delete(ATTACHMENT_BLUR_FRAGMENT_KEY);
+  }
+
+  parsedUrl.hash = fragmentParams.toString();
+
+  const isLocalAttachment =
+    parsedUrl.origin === window.location.origin && parsedUrl.pathname === getLocalAttachmentPath(attachment) && !attachment.externalLink?.startsWith("http");
+
+  return {
+    ...attachment,
+    externalLink: !blurred && isLocalAttachment ? "" : serializeAttachmentUrl(originalUrl, parsedUrl),
+  };
 };
 
 // isImage returns true if the given mime type is an image.

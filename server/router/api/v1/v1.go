@@ -119,7 +119,10 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 	}))
 	// Register SSE endpoint with same CORS as rest of /api/v1.
 	gwGroup.GET("/api/v1/sse", func(c *echo.Context) error {
-		return handleSSE(c, s.SSEHub, auth.NewAuthenticator(s.Store, s.Secret))
+		return handleSSE(c, s.SSEHub, authenticator)
+	})
+	gwGroup.PATCH("/api/v1/attachments/:uid/blur", func(c *echo.Context) error {
+		return s.handleUpdateAttachmentBlur(c, authenticator)
 	})
 	handler := echo.WrapHandler(gwMux)
 

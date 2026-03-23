@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -43,8 +44,9 @@ const (
 	// defaultJPEGQuality is the JPEG quality used when re-encoding images for EXIF stripping.
 	// Quality 95 maintains visual quality while ensuring metadata is removed.
 	defaultJPEGQuality = 95
-)
 
+	attachmentBlurFragmentKey = "memos-blurred"
+)
 
 // exifCapableImageTypes defines image formats that may contain EXIF metadata.
 // These formats will have their EXIF metadata stripped on upload for privacy.
@@ -341,11 +343,34 @@ func convertAttachmentFromStore(attachment *store.Attachment) *v1pb.Attachment {
 		memoName := fmt.Sprintf("%s%s", MemoNamePrefix, *attachment.MemoUID)
 		attachmentMessage.Memo = &memoName
 	}
-	if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL || attachment.StorageType == storepb.AttachmentStorageType_S3 {
+	switch attachment.StorageType {
+	case storepb.AttachmentStorageType_EXTERNAL, storepb.AttachmentStorageType_S3:
 		attachmentMessage.ExternalLink = attachment.Reference
+	case storepb.AttachmentStorageType_LOCAL:
+		if attachment.IsBlurred {
+			attachmentMessage.ExternalLink = fmt.Sprintf("/file/%s/%s", attachmentMessage.Name, attachment.Filename)
+		}
+	}
+	if attachment.IsBlurred && attachmentMessage.ExternalLink != "" {
+		attachmentMessage.ExternalLink = appendAttachmentBlurFragment(attachmentMessage.ExternalLink)
 	}
 
 	return attachmentMessage
+}
+
+func appendAttachmentBlurFragment(rawURL string) string {
+	parsedURL, err := neturl.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+
+	fragmentValues, err := neturl.ParseQuery(parsedURL.Fragment)
+	if err != nil {
+		fragmentValues = neturl.Values{}
+	}
+	fragmentValues.Set(attachmentBlurFragmentKey, "1")
+	parsedURL.Fragment = fragmentValues.Encode()
+	return parsedURL.String()
 }
 
 // SaveAttachmentBlob saves the blob of attachment based on the storage config.
