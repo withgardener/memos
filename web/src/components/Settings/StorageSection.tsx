@@ -37,11 +37,11 @@ const StorageSection = () => {
       return false;
     }
 
-    if (instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.LOCAL) {
-      if (instanceStorageSetting.filepathTemplate.length === 0) {
-        return false;
-      }
-    } else if (instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.S3) {
+    if (instanceStorageSetting.filepathTemplate.length === 0) {
+      return false;
+    }
+
+    if (instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.S3) {
       if (
         instanceStorageSetting.s3Config?.accessKeyId.length === 0 ||
         instanceStorageSetting.s3Config?.accessKeySecret.length === 0 ||
@@ -55,7 +55,6 @@ const StorageSection = () => {
     return !isEqual(originalSetting, instanceStorageSetting);
   }, [instanceStorageSetting, originalSetting]);
 
-  // Force display type to S3 — database and local are disabled in the UI.
   const effectiveStorageType = InstanceSetting_StorageSetting_StorageType.S3;
 
   const handleMaxUploadSizeChanged = async (event: React.FocusEvent<HTMLInputElement>) => {
@@ -186,7 +185,17 @@ const StorageSection = () => {
           />
         </SettingRow>
 
-        {/* filepath template is not used in S3 mode */}
+        <SettingRow label={t("setting.storage-section.filepath-template")}>
+          <div className="flex flex-col gap-1">
+            <Input
+              className="w-64"
+              value={instanceStorageSetting.filepathTemplate}
+              placeholder={t("setting.storage-section.path-placeholder")}
+              onChange={handleFilepathTemplateChanged}
+            />
+            <span className="text-xs text-muted-foreground">{t("setting.storage-section.path-description")}</span>
+          </div>
+        </SettingRow>
       </SettingGroup>
 
       {effectiveStorageType === InstanceSetting_StorageSetting_StorageType.S3 && (

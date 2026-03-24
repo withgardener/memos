@@ -1,8 +1,10 @@
+import { create } from "@bufbuild/protobuf";
+import { FieldMaskSchema } from "@bufbuild/protobuf/wkt";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAccessToken } from "@/auth-state";
 import { attachmentServiceClient } from "@/connect";
 import { memoKeys } from "@/hooks/useMemoQueries";
 import type { Attachment, ListAttachmentsRequest } from "@/types/proto/api/v1/attachment_service_pb";
+import { AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
 
 // Query keys factory
 export const attachmentKeys = {
@@ -34,7 +36,6 @@ export function useCreateAttachment() {
       return result;
     },
     onSuccess: () => {
-      // Invalidate attachments list
       queryClient.invalidateQueries({ queryKey: attachmentKeys.lists() });
     },
   });
@@ -50,44 +51,10 @@ export function useDeleteAttachment() {
       return name;
     },
     onSuccess: (name) => {
-      // Remove from cache
       queryClient.removeQueries({ queryKey: attachmentKeys.detail(name) });
-      // Invalidate lists
       queryClient.invalidateQueries({ queryKey: attachmentKeys.lists() });
     },
   });
-}
-
-async function updateAttachmentBlurState(attachmentName: string, blurred: boolean) {
-  const uid = attachmentName.replace(/^attachments\//, "");
-  const headers = new Headers({
-    "Content-Type": "application/json",
-  });
-
-  const accessToken = getAccessToken();
-  if (accessToken) {
-    headers.set("Authorization", `Bearer ${accessToken}`);
-  }
-
-  const response = await fetch(`/api/v1/attachments/${uid}/blur`, {
-    method: "PATCH",
-    headers,
-    credentials: "include",
-    body: JSON.stringify({ blurred }),
-  });
-
-  if (!response.ok) {
-    let errorMessage = "Failed to update attachment blur state";
-    try {
-      const data = (await response.json()) as { error?: string };
-      if (data.error) {
-        errorMessage = data.error;
-      }
-    } catch {
-      // Keep the fallback error message.
-    }
-    throw new Error(errorMessage);
-  }
 }
 
 export function useUpdateAttachmentBlur() {
@@ -95,8 +62,14 @@ export function useUpdateAttachmentBlur() {
 
   return useMutation({
     mutationFn: async ({ attachment, blurred }: { attachment: Attachment; blurred: boolean }) => {
-      await updateAttachmentBlurState(attachment.name, blurred);
-      return { attachment, blurred };
+      const updatedAttachment = await attachmentServiceClient.updateAttachment({
+        attachment: create(AttachmentSchema, {
+          name: attachment.name,
+          isBlurred: blurred,
+        }),
+        updateMask: create(FieldMaskSchema, { paths: ["is_blurred"] }),
+      });
+      return updatedAttachment;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: attachmentKeys.lists() });

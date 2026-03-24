@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 )
@@ -32,7 +33,6 @@ func TestCreateAttachment(t *testing.T) {
 
 	// Test case 2: Create attachment with empty type and unknown extension, but detectable content
 	t.Run("EmptyType_UnknownExtension_ContentSniffing", func(t *testing.T) {
-		// PNG magic header: 89 50 4E 47 0D 0A 1A 0A
 		pngContent := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
 		attachment, err := ts.Service.CreateAttachment(userCtx, &v1pb.CreateAttachmentRequest{
 			Attachment: &v1pb.Attachment{
@@ -55,5 +55,40 @@ func TestCreateAttachment(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, "application/octet-stream", attachment.Type)
+	})
+
+	t.Run("CreateWithBlurredState", func(t *testing.T) {
+		attachment, err := ts.Service.CreateAttachment(userCtx, &v1pb.CreateAttachmentRequest{
+			Attachment: &v1pb.Attachment{
+				Filename:  "blurred.png",
+				Type:      "image/png",
+				Content:   []byte{0x89, 0x50, 0x4E, 0x47},
+				IsBlurred: true,
+			},
+		})
+		require.NoError(t, err)
+		require.True(t, attachment.IsBlurred)
+	})
+
+	t.Run("UpdateBlurredState", func(t *testing.T) {
+		attachment, err := ts.Service.CreateAttachment(userCtx, &v1pb.CreateAttachmentRequest{
+			Attachment: &v1pb.Attachment{
+				Filename: "toggle.png",
+				Type:     "image/png",
+				Content:  []byte{0x89, 0x50, 0x4E, 0x47},
+			},
+		})
+		require.NoError(t, err)
+		require.False(t, attachment.IsBlurred)
+
+		updatedAttachment, err := ts.Service.UpdateAttachment(userCtx, &v1pb.UpdateAttachmentRequest{
+			Attachment: &v1pb.Attachment{
+				Name:      attachment.Name,
+				IsBlurred: true,
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"is_blurred"}},
+		})
+		require.NoError(t, err)
+		require.True(t, updatedAttachment.IsBlurred)
 	})
 }

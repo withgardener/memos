@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
-	neturl "net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -44,8 +43,6 @@ const (
 	// defaultJPEGQuality is the JPEG quality used when re-encoding images for EXIF stripping.
 	// Quality 95 maintains visual quality while ensuring metadata is removed.
 	defaultJPEGQuality = 95
-
-	attachmentBlurFragmentKey = "memos-blurred"
 )
 
 // exifCapableImageTypes defines image formats that may contain EXIF metadata.
@@ -107,6 +104,7 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 		CreatorID: user.ID,
 		Filename:  request.Attachment.Filename,
 		Type:      request.Attachment.Type,
+		IsBlurred: request.Attachment.IsBlurred,
 	}
 
 	instanceStorageSetting, err := s.Store.GetInstanceStorageSetting(ctx)
@@ -284,11 +282,14 @@ func (s *APIV1Service) UpdateAttachment(ctx context.Context, request *v1pb.Updat
 		UpdatedTs: &currentTs,
 	}
 	for _, field := range request.UpdateMask.Paths {
-		if field == "filename" {
+		switch field {
+		case "filename":
 			if !validateFilename(request.Attachment.Filename) {
 				return nil, status.Errorf(codes.InvalidArgument, "filename contains invalid characters or format")
 			}
 			update.Filename = &request.Attachment.Filename
+		case "is_blurred":
+			update.IsBlurred = &request.Attachment.IsBlurred
 		}
 	}
 
@@ -338,39 +339,17 @@ func convertAttachmentFromStore(attachment *store.Attachment) *v1pb.Attachment {
 		Filename:   attachment.Filename,
 		Type:       attachment.Type,
 		Size:       attachment.Size,
+		IsBlurred:  attachment.IsBlurred,
 	}
 	if attachment.MemoUID != nil && *attachment.MemoUID != "" {
 		memoName := fmt.Sprintf("%s%s", MemoNamePrefix, *attachment.MemoUID)
 		attachmentMessage.Memo = &memoName
 	}
-	switch attachment.StorageType {
-	case storepb.AttachmentStorageType_EXTERNAL, storepb.AttachmentStorageType_S3:
+	if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL || attachment.StorageType == storepb.AttachmentStorageType_S3 {
 		attachmentMessage.ExternalLink = attachment.Reference
-	case storepb.AttachmentStorageType_LOCAL:
-		if attachment.IsBlurred {
-			attachmentMessage.ExternalLink = fmt.Sprintf("/file/%s/%s", attachmentMessage.Name, attachment.Filename)
-		}
-	}
-	if attachment.IsBlurred && attachmentMessage.ExternalLink != "" {
-		attachmentMessage.ExternalLink = appendAttachmentBlurFragment(attachmentMessage.ExternalLink)
 	}
 
 	return attachmentMessage
-}
-
-func appendAttachmentBlurFragment(rawURL string) string {
-	parsedURL, err := neturl.Parse(rawURL)
-	if err != nil {
-		return rawURL
-	}
-
-	fragmentValues, err := neturl.ParseQuery(parsedURL.Fragment)
-	if err != nil {
-		fragmentValues = neturl.Values{}
-	}
-	fragmentValues.Set(attachmentBlurFragmentKey, "1")
-	parsedURL.Fragment = fragmentValues.Encode()
-	return parsedURL.String()
 }
 
 // SaveAttachmentBlob saves the blob of attachment based on the storage config.

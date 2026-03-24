@@ -2030,6 +2030,9 @@ components:
                     description: |-
                         Optional. The related memo. Refer to `Memo.name`.
                          Format: memos/{memo}
+                isBlurred:
+                    type: boolean
+                    description: Optional. Whether the image attachment should be blurred by default in the UI.
         CreatePersonalAccessTokenRequest:
             required:
                 - parent

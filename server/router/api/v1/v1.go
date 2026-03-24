@@ -121,9 +121,7 @@ func (s *APIV1Service) RegisterGateway(ctx context.Context, echoServer *echo.Ech
 	gwGroup.GET("/api/v1/sse", func(c *echo.Context) error {
 		return handleSSE(c, s.SSEHub, authenticator)
 	})
-	gwGroup.PATCH("/api/v1/attachments/:uid/blur", func(c *echo.Context) error {
-		return s.handleUpdateAttachmentBlur(c, authenticator)
-	})
+
 	handler := echo.WrapHandler(gwMux)
 
 	gwGroup.Any("/api/v1/*", handler)

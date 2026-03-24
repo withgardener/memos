@@ -83,6 +83,7 @@ type AttachmentPayload struct {
 	//
 	//	*AttachmentPayload_S3Object_
 	Payload       isAttachmentPayload_Payload `protobuf_oneof:"payload"`
+	IsBlurred     bool                        `protobuf:"varint,2,opt,name=is_blurred,json=isBlurred,proto3" json:"is_blurred,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -131,6 +132,13 @@ func (x *AttachmentPayload) GetS3Object() *AttachmentPayload_S3Object {
 		}
 	}
 	return nil
+}
+
+func (x *AttachmentPayload) GetIsBlurred() bool {
+	if x != nil {
+		return x.IsBlurred
+	}
+	return false
 }
 
 type isAttachmentPayload_Payload interface {
@@ -210,9 +218,11 @@ var File_store_attachment_proto protoreflect.FileDescriptor
 
 const file_store_attachment_proto_rawDesc = "" +
 	"\n" +
-	"\x16store/attachment.proto\x12\vmemos.store\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cstore/instance_setting.proto\"\x8c\x02\n" +
+	"\x16store/attachment.proto\x12\vmemos.store\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cstore/instance_setting.proto\"\xab\x02\n" +
 	"\x11AttachmentPayload\x12F\n" +
-	"\ts3_object\x18\x01 \x01(\v2'.memos.store.AttachmentPayload.S3ObjectH\x00R\bs3Object\x1a\xa3\x01\n" +
+	"\ts3_object\x18\x01 \x01(\v2'.memos.store.AttachmentPayload.S3ObjectH\x00R\bs3Object\x12\x1d\n" +
+	"\n" +
+	"is_blurred\x18\x02 \x01(\bR\tisBlurred\x1a\xa3\x01\n" +
 	"\bS3Object\x129\n" +
 	"\ts3_config\x18\x01 \x01(\v2\x1c.memos.store.StorageS3ConfigR\bs3Config\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12J\n" +
