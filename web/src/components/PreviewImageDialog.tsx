@@ -19,7 +19,6 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0, blu
   const [revealed, setRevealed] = useState(false);
   const t = useTranslate();
 
-  // Update current index when initialIndex prop changes
   useEffect(() => {
     setCurrentIndex(initialIndex);
   }, [initialIndex]);
@@ -38,7 +37,6 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0, blu
     }
   }, [open, currentIndex, initialIndex]);
 
-  // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!open) return;
@@ -60,7 +58,7 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0, blu
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onOpenChange]);
+  }, [open, onOpenChange, imgUrls.length]);
 
   const handleClose = () => {
     onOpenChange(false);
@@ -72,17 +70,15 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0, blu
     }
   };
 
-  // Return early if no images provided
   if (!imgUrls.length) return null;
 
-  // Ensure currentIndex is within bounds
   const safeIndex = Math.max(0, Math.min(currentIndex, imgUrls.length - 1));
   const isBlurred = blurredStates[safeIndex] ?? false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="!w-[100vw] !h-[100vh] !max-w-[100vw] !max-h-[100vw] p-0 border-0 shadow-none bg-transparent [&>button]:hidden"
+        className="!w-[100vw] !h-[100vh] !max-w-[100vw] !max-h-[100vh] p-0 border-0 shadow-none bg-transparent [&>button]:hidden"
         aria-describedby="image-preview-description"
       >
         <VisuallyHidden>
@@ -92,7 +88,6 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0, blu
           <DialogDescription>{t("memo.image-preview-description")}</DialogDescription>
         </VisuallyHidden>
 
-        {/* Close button */}
         <div className="fixed top-4 right-4 z-50">
           <Button
             onClick={handleClose}
@@ -105,9 +100,8 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0, blu
           </Button>
         </div>
 
-        {/* Image container */}
-        <div className="w-full h-full flex items-center justify-center p-4 sm:p-8 overflow-auto" onClick={handleBackdropClick}>
-          <div className="relative flex items-center justify-center">
+        <div className="w-full h-full flex items-center justify-center p-4 sm:p-8 overflow-hidden" onClick={handleBackdropClick}>
+          <div className="relative w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] sm:w-[calc(100vw-4rem)] sm:h-[calc(100vh-4rem)] flex items-center justify-center">
             <img
               src={imgUrls[safeIndex]}
               alt={`Preview image ${safeIndex + 1} of ${imgUrls.length}`}
@@ -131,7 +125,6 @@ function PreviewImageDialog({ open, onOpenChange, imgUrls, initialIndex = 0, blu
           </div>
         </div>
 
-        {/* Screen reader description */}
         <div id="image-preview-description" className="sr-only">
           {t("memo.image-preview-description")}
         </div>
