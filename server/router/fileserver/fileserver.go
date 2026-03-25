@@ -26,8 +26,8 @@ import (
 
 // Constants for file serving configuration.
 const (
-	// cacheMaxAge is the max-age value for Cache-Control headers (1 year).
-	cacheMaxAge = "public, max-age=31536000"
+	// cacheControlNoStore disables client-side caching for dynamically served files.
+	cacheControlNoStore = "no-cache, no-store, must-revalidate"
 )
 
 // xssUnsafeTypes contains MIME types that could execute scripts if served directly.
@@ -141,7 +141,7 @@ func (s *FileServerService) serveUserAvatar(c *echo.Context) error {
 
 	setSecurityHeaders(c)
 	c.Response().Header().Set(echo.HeaderContentType, imageType)
-	c.Response().Header().Set(echo.HeaderCacheControl, cacheMaxAge)
+	c.Response().Header().Set(echo.HeaderCacheControl, cacheControlNoStore)
 
 	return c.Blob(http.StatusOK, imageType, imageData)
 }
@@ -169,6 +169,7 @@ func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate presigned URL").Wrap(err)
 		}
+		c.Response().Header().Set(echo.HeaderCacheControl, cacheControlNoStore)
 		return c.Redirect(http.StatusTemporaryRedirect, presignURL)
 
 	default:
@@ -186,6 +187,7 @@ func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.A
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate presigned URL").Wrap(err)
 		}
+		c.Response().Header().Set(echo.HeaderCacheControl, cacheControlNoStore)
 		return c.Redirect(http.StatusTemporaryRedirect, presignURL)
 	}
 
@@ -471,7 +473,7 @@ func setSecurityHeaders(c *echo.Context) {
 func setMediaHeaders(c *echo.Context, contentType, originalType string) {
 	h := c.Response().Header()
 	h.Set(echo.HeaderContentType, contentType)
-	h.Set(echo.HeaderCacheControl, cacheMaxAge)
+	h.Set(echo.HeaderCacheControl, cacheControlNoStore)
 
 	// Support HDR/wide color gamut for images and videos.
 	if strings.HasPrefix(originalType, "image/") || strings.HasPrefix(originalType, "video/") {
