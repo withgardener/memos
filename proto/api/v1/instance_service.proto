@@ -134,13 +134,16 @@ message InstanceSetting {
 
     // S3 configuration for cloud storage backend.
     // Reference: https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/
-    message S3Config {
+        message S3Config {
       string access_key_id = 1;
       string access_key_secret = 2;
       string endpoint = 3;
       string region = 4;
       string bucket = 5;
       bool use_path_style = 6;
+      bool enable_image_processing = 7;
+      string image_processing_query_key = 8;
+      string image_processing_query_value = 9;
     }
     // The S3 config.
     S3Config s3_config = 4;
@@ -179,3 +182,4 @@ message UpdateInstanceSettingRequest {
   // The list of fields to update.
   google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = OPTIONAL];
 }
+

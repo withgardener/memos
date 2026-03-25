@@ -2831,6 +2831,12 @@ components:
                     type: string
                 usePathStyle:
                     type: boolean
+                enableImageProcessing:
+                    type: boolean
+                imageProcessingQueryKey:
+                    type: string
+                imageProcessingQueryValue:
+                    type: string
             description: |-
                 S3 configuration for cloud storage backend.
                  Reference: https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/

@@ -556,15 +556,18 @@ func (x *InstanceStorageSetting) GetS3Config() *StorageS3Config {
 
 // Reference: https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/
 type StorageS3Config struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	AccessKeyId     string                 `protobuf:"bytes,1,opt,name=access_key_id,json=accessKeyId,proto3" json:"access_key_id,omitempty"`
-	AccessKeySecret string                 `protobuf:"bytes,2,opt,name=access_key_secret,json=accessKeySecret,proto3" json:"access_key_secret,omitempty"`
-	Endpoint        string                 `protobuf:"bytes,3,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	Region          string                 `protobuf:"bytes,4,opt,name=region,proto3" json:"region,omitempty"`
-	Bucket          string                 `protobuf:"bytes,5,opt,name=bucket,proto3" json:"bucket,omitempty"`
-	UsePathStyle    bool                   `protobuf:"varint,6,opt,name=use_path_style,json=usePathStyle,proto3" json:"use_path_style,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	AccessKeyId               string                 `protobuf:"bytes,1,opt,name=access_key_id,json=accessKeyId,proto3" json:"access_key_id,omitempty"`
+	AccessKeySecret           string                 `protobuf:"bytes,2,opt,name=access_key_secret,json=accessKeySecret,proto3" json:"access_key_secret,omitempty"`
+	Endpoint                  string                 `protobuf:"bytes,3,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	Region                    string                 `protobuf:"bytes,4,opt,name=region,proto3" json:"region,omitempty"`
+	Bucket                    string                 `protobuf:"bytes,5,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	UsePathStyle              bool                   `protobuf:"varint,6,opt,name=use_path_style,json=usePathStyle,proto3" json:"use_path_style,omitempty"`
+	EnableImageProcessing     bool                   `protobuf:"varint,7,opt,name=enable_image_processing,json=enableImageProcessing,proto3" json:"enable_image_processing,omitempty"`
+	ImageProcessingQueryKey   string                 `protobuf:"bytes,8,opt,name=image_processing_query_key,json=imageProcessingQueryKey,proto3" json:"image_processing_query_key,omitempty"`
+	ImageProcessingQueryValue string                 `protobuf:"bytes,9,opt,name=image_processing_query_value,json=imageProcessingQueryValue,proto3" json:"image_processing_query_value,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *StorageS3Config) Reset() {
@@ -637,6 +640,27 @@ func (x *StorageS3Config) GetUsePathStyle() bool {
 		return x.UsePathStyle
 	}
 	return false
+}
+
+func (x *StorageS3Config) GetEnableImageProcessing() bool {
+	if x != nil {
+		return x.EnableImageProcessing
+	}
+	return false
+}
+
+func (x *StorageS3Config) GetImageProcessingQueryKey() string {
+	if x != nil {
+		return x.ImageProcessingQueryKey
+	}
+	return ""
+}
+
+func (x *StorageS3Config) GetImageProcessingQueryValue() string {
+	if x != nil {
+		return x.ImageProcessingQueryValue
+	}
+	return ""
 }
 
 type InstanceMemoRelatedSetting struct {
@@ -758,14 +782,17 @@ const file_store_instance_setting_proto_rawDesc = "" +
 	"\x18STORAGE_TYPE_UNSPECIFIED\x10\x00\x12\f\n" +
 	"\bDATABASE\x10\x01\x12\t\n" +
 	"\x05LOCAL\x10\x02\x12\x06\n" +
-	"\x02S3\x10\x03\"\xd3\x01\n" +
+	"\x02S3\x10\x03\"\x89\x03\n" +
 	"\x0fStorageS3Config\x12\"\n" +
 	"\raccess_key_id\x18\x01 \x01(\tR\vaccessKeyId\x12*\n" +
 	"\x11access_key_secret\x18\x02 \x01(\tR\x0faccessKeySecret\x12\x1a\n" +
 	"\bendpoint\x18\x03 \x01(\tR\bendpoint\x12\x16\n" +
 	"\x06region\x18\x04 \x01(\tR\x06region\x12\x16\n" +
 	"\x06bucket\x18\x05 \x01(\tR\x06bucket\x12$\n" +
-	"\x0euse_path_style\x18\x06 \x01(\bR\fusePathStyle\"\x9c\x02\n" +
+	"\x0euse_path_style\x18\x06 \x01(\bR\fusePathStyle\x126\n" +
+	"\x17enable_image_processing\x18\a \x01(\bR\x15enableImageProcessing\x12;\n" +
+	"\x1aimage_processing_query_key\x18\b \x01(\tR\x17imageProcessingQueryKey\x12?\n" +
+	"\x1cimage_processing_query_value\x18\t \x01(\tR\x19imageProcessingQueryValue\"\x9c\x02\n" +
 	"\x1aInstanceMemoRelatedSetting\x12<\n" +
 	"\x1adisallow_public_visibility\x18\x01 \x01(\bR\x18disallowPublicVisibility\x127\n" +
 	"\x18display_with_update_time\x18\x02 \x01(\bR\x15displayWithUpdateTime\x120\n" +

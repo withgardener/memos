@@ -103,7 +103,7 @@ func (r *Runner) CheckAndPresign(ctx context.Context) {
 				continue
 			}
 
-			presignURL, err := s3Client.PresignGetObject(ctx, s3ObjectPayload.Key)
+			presignURL, err := s3Client.PresignGetObject(ctx, s3ObjectPayload.Key, nil)
 			if err != nil {
 				slog.Error("Failed to presign URL", "error", err, "attachmentID", attachment.ID)
 				continue

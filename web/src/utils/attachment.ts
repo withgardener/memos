@@ -1,20 +1,41 @@
 import { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 
-export const getAttachmentUrl = (attachment: Attachment) => {
+interface AttachmentUrlOptions {
+  original?: boolean;
+}
+
+const buildAttachmentFileUrl = (attachment: Attachment, options?: AttachmentUrlOptions) => {
+  const url = new URL(`${window.location.origin}/file/${attachment.name}/${attachment.filename}`);
+  if (options?.original) {
+    url.searchParams.set("original", "1");
+  }
+  return url.toString();
+};
+
+export const getAttachmentUrl = (attachment: Attachment, options?: AttachmentUrlOptions) => {
+  if (isImage(attachment.type)) {
+    return buildAttachmentFileUrl(attachment, options);
+  }
+
   if (attachment.externalLink) {
     return attachment.externalLink;
   }
 
-  return `${window.location.origin}/file/${attachment.name}/${attachment.filename}`;
+  return buildAttachmentFileUrl(attachment, options);
 };
 
 export const getAttachmentThumbnailUrl = (attachment: Attachment) => {
+  if (isImage(attachment.type)) {
+    return buildAttachmentFileUrl(attachment);
+  }
+
   if (attachment.externalLink) {
     return attachment.externalLink;
   }
-  return `${window.location.origin}/file/${attachment.name}/${attachment.filename}`;
+  return buildAttachmentFileUrl(attachment);
 };
 
+export const getOriginalAttachmentUrl = (attachment: Attachment) => getAttachmentUrl(attachment, { original: true });
 export const getAttachmentType = (attachment: Attachment) => {
   if (isImage(attachment.type)) {
     return "image/*";
@@ -48,12 +69,10 @@ export const withAttachmentBlurState = (attachment: Attachment, blurred: boolean
   isBlurred: blurred,
 });
 
-// isImage returns true if the given mime type is an image.
 export const isImage = (t: string) => {
   return t.startsWith("image/") && !isPSD(t);
 };
 
-// isMidiFile returns true if the given mime type is a MIDI file.
 export const isMidiFile = (mimeType: string): boolean => {
   return mimeType === "audio/midi" || mimeType === "audio/mid" || mimeType === "audio/x-midi" || mimeType === "application/x-midi";
 };
@@ -61,3 +80,4 @@ export const isMidiFile = (mimeType: string): boolean => {
 const isPSD = (t: string) => {
   return t === "image/vnd.adobe.photoshop" || t === "image/x-photoshop" || t === "image/photoshop";
 };
+

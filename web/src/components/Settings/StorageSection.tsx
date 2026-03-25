@@ -51,7 +51,16 @@ const StorageSection = () => {
       ) {
         return false;
       }
+
+      if (
+        instanceStorageSetting.s3Config?.enableImageProcessing &&
+        (instanceStorageSetting.s3Config.imageProcessingQueryKey.length === 0 ||
+          instanceStorageSetting.s3Config.imageProcessingQueryValue.length === 0)
+      ) {
+        return false;
+      }
     }
+
     return !isEqual(originalSetting, instanceStorageSetting);
   }, [instanceStorageSetting, originalSetting]);
 
@@ -86,6 +95,9 @@ const StorageSection = () => {
       region: existingS3Config?.region ?? "",
       bucket: existingS3Config?.bucket ?? "",
       usePathStyle: existingS3Config?.usePathStyle ?? false,
+      enableImageProcessing: existingS3Config?.enableImageProcessing ?? false,
+      imageProcessingQueryKey: existingS3Config?.imageProcessingQueryKey ?? "",
+      imageProcessingQueryValue: existingS3Config?.imageProcessingQueryValue ?? "",
       ...s3Config,
     };
     const update = create(InstanceSetting_StorageSettingSchema, {
@@ -95,32 +107,6 @@ const StorageSection = () => {
       s3Config: create(InstanceSetting_StorageSetting_S3ConfigSchema, s3ConfigInit),
     });
     setInstanceStorageSetting(update);
-  };
-
-  const handleS3ConfigAccessKeyIdChanged = async (event: React.FocusEvent<HTMLInputElement>) => {
-    handlePartialS3ConfigChanged({ accessKeyId: event.target.value });
-  };
-
-  const handleS3ConfigAccessKeySecretChanged = async (event: React.FocusEvent<HTMLInputElement>) => {
-    handlePartialS3ConfigChanged({ accessKeySecret: event.target.value });
-  };
-
-  const handleS3ConfigEndpointChanged = async (event: React.FocusEvent<HTMLInputElement>) => {
-    handlePartialS3ConfigChanged({ endpoint: event.target.value });
-  };
-
-  const handleS3ConfigRegionChanged = async (event: React.FocusEvent<HTMLInputElement>) => {
-    handlePartialS3ConfigChanged({ region: event.target.value });
-  };
-
-  const handleS3ConfigBucketChanged = async (event: React.FocusEvent<HTMLInputElement>) => {
-    handlePartialS3ConfigChanged({ bucket: event.target.value });
-  };
-
-  const handleS3ConfigUsePathStyleChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
-    handlePartialS3ConfigChanged({
-      usePathStyle: event.target.checked,
-    });
   };
 
   const handleStorageTypeChanged = async (storageType: InstanceSetting_StorageSetting_StorageType) => {
@@ -201,7 +187,7 @@ const StorageSection = () => {
       {effectiveStorageType === InstanceSetting_StorageSetting_StorageType.S3 && (
         <SettingGroup title="S3 Configuration" showSeparator>
           <SettingRow label="Access key id">
-            <Input className="w-64" value={instanceStorageSetting.s3Config?.accessKeyId} onChange={handleS3ConfigAccessKeyIdChanged} />
+            <Input className="w-64" value={instanceStorageSetting.s3Config?.accessKeyId} onChange={(event) => handlePartialS3ConfigChanged({ accessKeyId: event.target.value })} />
           </SettingRow>
 
           <SettingRow label="Access key secret">
@@ -209,32 +195,57 @@ const StorageSection = () => {
               className="w-64"
               type="password"
               value={instanceStorageSetting.s3Config?.accessKeySecret}
-              onChange={handleS3ConfigAccessKeySecretChanged}
+              onChange={(event) => handlePartialS3ConfigChanged({ accessKeySecret: event.target.value })}
             />
           </SettingRow>
 
           <SettingRow label="Endpoint">
-            <Input className="w-64" value={instanceStorageSetting.s3Config?.endpoint} onChange={handleS3ConfigEndpointChanged} />
+            <Input className="w-64" value={instanceStorageSetting.s3Config?.endpoint} onChange={(event) => handlePartialS3ConfigChanged({ endpoint: event.target.value })} />
           </SettingRow>
 
           <SettingRow label="Region">
-            <Input className="w-64" value={instanceStorageSetting.s3Config?.region} onChange={handleS3ConfigRegionChanged} />
+            <Input className="w-64" value={instanceStorageSetting.s3Config?.region} onChange={(event) => handlePartialS3ConfigChanged({ region: event.target.value })} />
           </SettingRow>
 
           <SettingRow label="Bucket">
-            <Input className="w-64" value={instanceStorageSetting.s3Config?.bucket} onChange={handleS3ConfigBucketChanged} />
+            <Input className="w-64" value={instanceStorageSetting.s3Config?.bucket} onChange={(event) => handlePartialS3ConfigChanged({ bucket: event.target.value })} />
           </SettingRow>
 
           <SettingRow label="Use Path Style">
             <Switch
               checked={instanceStorageSetting.s3Config?.usePathStyle}
-              onCheckedChange={(checked) =>
-                handleS3ConfigUsePathStyleChanged({ target: { checked } } as React.ChangeEvent<HTMLInputElement> & {
-                  target: { checked: boolean };
-                })
-              }
+              onCheckedChange={(checked) => handlePartialS3ConfigChanged({ usePathStyle: checked })}
             />
           </SettingRow>
+
+          <SettingRow label="Enable Image Processing">
+            <Switch
+              checked={instanceStorageSetting.s3Config?.enableImageProcessing}
+              onCheckedChange={(checked) => handlePartialS3ConfigChanged({ enableImageProcessing: checked })}
+            />
+          </SettingRow>
+
+          {instanceStorageSetting.s3Config?.enableImageProcessing && (
+            <>
+              <SettingRow label="Processing Query Key">
+                <Input
+                  className="w-64"
+                  value={instanceStorageSetting.s3Config?.imageProcessingQueryKey}
+                  placeholder="x-image-process"
+                  onChange={(event) => handlePartialS3ConfigChanged({ imageProcessingQueryKey: event.target.value })}
+                />
+              </SettingRow>
+
+              <SettingRow label="Processing Query Value">
+                <Input
+                  className="w-64"
+                  value={instanceStorageSetting.s3Config?.imageProcessingQueryValue}
+                  placeholder="style/format_webp"
+                  onChange={(event) => handlePartialS3ConfigChanged({ imageProcessingQueryValue: event.target.value })}
+                />
+              </SettingRow>
+            </>
+          )}
         </SettingGroup>
       )}
 

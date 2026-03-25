@@ -210,12 +210,15 @@ func convertInstanceStorageSettingFromStore(settingpb *storepb.InstanceStorageSe
 	}
 	if settingpb.S3Config != nil {
 		setting.S3Config = &v1pb.InstanceSetting_StorageSetting_S3Config{
-			AccessKeyId:     settingpb.S3Config.AccessKeyId,
-			AccessKeySecret: settingpb.S3Config.AccessKeySecret,
-			Endpoint:        settingpb.S3Config.Endpoint,
-			Region:          settingpb.S3Config.Region,
-			Bucket:          settingpb.S3Config.Bucket,
-			UsePathStyle:    settingpb.S3Config.UsePathStyle,
+			AccessKeyId:               settingpb.S3Config.AccessKeyId,
+			AccessKeySecret:           settingpb.S3Config.AccessKeySecret,
+			Endpoint:                  settingpb.S3Config.Endpoint,
+			Region:                    settingpb.S3Config.Region,
+			Bucket:                    settingpb.S3Config.Bucket,
+			UsePathStyle:              settingpb.S3Config.UsePathStyle,
+			EnableImageProcessing:     settingpb.S3Config.EnableImageProcessing,
+			ImageProcessingQueryKey:   settingpb.S3Config.ImageProcessingQueryKey,
+			ImageProcessingQueryValue: settingpb.S3Config.ImageProcessingQueryValue,
 		}
 	}
 	return setting
@@ -232,12 +235,15 @@ func convertInstanceStorageSettingToStore(setting *v1pb.InstanceSetting_StorageS
 	}
 	if setting.S3Config != nil {
 		settingpb.S3Config = &storepb.StorageS3Config{
-			AccessKeyId:     setting.S3Config.AccessKeyId,
-			AccessKeySecret: setting.S3Config.AccessKeySecret,
-			Endpoint:        setting.S3Config.Endpoint,
-			Region:          setting.S3Config.Region,
-			Bucket:          setting.S3Config.Bucket,
-			UsePathStyle:    setting.S3Config.UsePathStyle,
+			AccessKeyId:               setting.S3Config.AccessKeyId,
+			AccessKeySecret:           setting.S3Config.AccessKeySecret,
+			Endpoint:                  setting.S3Config.Endpoint,
+			Region:                    setting.S3Config.Region,
+			Bucket:                    setting.S3Config.Bucket,
+			UsePathStyle:              setting.S3Config.UsePathStyle,
+			EnableImageProcessing:     setting.S3Config.EnableImageProcessing,
+			ImageProcessingQueryKey:   setting.S3Config.ImageProcessingQueryKey,
+			ImageProcessingQueryValue: setting.S3Config.ImageProcessingQueryValue,
 		}
 	}
 	return settingpb

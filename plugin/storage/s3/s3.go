@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go/middleware"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/pkg/errors"
 
 	storepb "github.com/usememos/memos/proto/gen/store"
@@ -19,6 +21,11 @@ import (
 type Client struct {
 	Client *s3.Client
 	Bucket *string
+}
+
+type PresignGetObjectOptions struct {
+	QueryKey   string
+	QueryValue string
 }
 
 func NewClient(ctx context.Context, s3Config *storepb.StorageS3Config) (*Client, error) {
@@ -46,7 +53,7 @@ func NewClient(ctx context.Context, s3Config *storepb.StorageS3Config) (*Client,
 func (c *Client) UploadObject(ctx context.Context, key string, fileType string, filename string, cacheControl string, content io.Reader) (string, error) {
 	uploader := manager.NewUploader(c.Client)
 	putInput := s3.PutObjectInput{
-		Bucket:      c.Bucket,
+		Bucket:             c.Bucket,
 		Key:                aws.String(key),
 		ContentType:        aws.String(fileType),
 		ContentDisposition: aws.String(fmt.Sprintf("inline; filename=%q", filename)),
@@ -66,20 +73,40 @@ func (c *Client) UploadObject(ctx context.Context, key string, fileType string, 
 }
 
 // PresignGetObject presigns an object in S3.
-func (c *Client) PresignGetObject(ctx context.Context, key string) (string, error) {
+func (c *Client) PresignGetObject(ctx context.Context, key string, presignOptions *PresignGetObjectOptions) (string, error) {
 	presignClient := s3.NewPresignClient(c.Client)
 	presignResult, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(*c.Bucket),
 		Key:    aws.String(key),
 	}, func(opts *s3.PresignOptions) {
-		// Set the expiration time of the presigned URL to 1 day.
-		// Reference: https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
 		opts.Expires = 24 * time.Hour
+		if presignOptions != nil && presignOptions.QueryKey != "" && presignOptions.QueryValue != "" {
+			opts.ClientOptions = append(opts.ClientOptions, func(o *s3.Options) {
+				o.APIOptions = append(o.APIOptions, addQueryParamMiddleware(presignOptions.QueryKey, presignOptions.QueryValue))
+			})
+		}
 	})
 	if err != nil {
 		return "", errors.Wrap(err, "failed to presign get object")
 	}
 	return presignResult.URL, nil
+}
+
+func addQueryParamMiddleware(queryKey, queryValue string) func(*middleware.Stack) error {
+	return func(stack *middleware.Stack) error {
+		return stack.Build.Add(middleware.BuildMiddlewareFunc("MemosS3ImageProcessingQuery", func(ctx context.Context, input middleware.BuildInput, next middleware.BuildHandler) (
+			output middleware.BuildOutput, metadata middleware.Metadata, err error,
+		) {
+			request, ok := input.Request.(*smithyhttp.Request)
+			if !ok {
+				return output, metadata, fmt.Errorf("unexpected request type %T", input.Request)
+			}
+			query := request.URL.Query()
+			query.Set(queryKey, queryValue)
+			request.URL.RawQuery = query.Encode()
+			return next.HandleBuild(ctx, input)
+		}), middleware.After)
+	}
 }
 
 // GetObject retrieves an object from S3.

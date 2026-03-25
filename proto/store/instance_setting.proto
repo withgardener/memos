@@ -89,6 +89,9 @@ message StorageS3Config {
   string region = 4;
   string bucket = 5;
   bool use_path_style = 6;
+  bool enable_image_processing = 7;
+  string image_processing_query_key = 8;
+  string image_processing_query_value = 9;
 }
 
 message InstanceMemoRelatedSetting {
@@ -103,3 +106,4 @@ message InstanceMemoRelatedSetting {
   // reactions is the list of reactions.
   repeated string reactions = 7;
 }
+

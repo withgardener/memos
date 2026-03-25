@@ -165,7 +165,7 @@ func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.
 		return nil
 
 	case storepb.AttachmentStorageType_S3:
-		presignURL, err := s.getS3PresignedURL(c.Request().Context(), attachment)
+		presignURL, err := s.getS3PresignedURL(c.Request().Context(), attachment, true)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate presigned URL").Wrap(err)
 		}
@@ -181,6 +181,14 @@ func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.
 
 // serveStaticFile serves non-streaming files (images, documents, etc.).
 func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.Attachment, contentType string) error {
+	if attachment.StorageType == storepb.AttachmentStorageType_S3 && strings.HasPrefix(attachment.Type, "image/") {
+		presignURL, err := s.getS3PresignedURL(c.Request().Context(), attachment, s.isOriginalImageRequest(c))
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate presigned URL").Wrap(err)
+		}
+		return c.Redirect(http.StatusTemporaryRedirect, presignURL)
+	}
+
 	blob, err := s.getAttachmentBlob(attachment)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get attachment blob").Wrap(err)
@@ -189,7 +197,6 @@ func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.A
 	setSecurityHeaders(c)
 	setMediaHeaders(c, contentType, attachment.Type)
 
-	// Force download for non-media files to prevent XSS execution.
 	if !strings.HasPrefix(contentType, "image/") && contentType != "application/pdf" {
 		c.Response().Header().Set(echo.HeaderContentDisposition, fmt.Sprintf("attachment; filename=%q", attachment.Filename))
 	}
@@ -318,17 +325,36 @@ func (s *FileServerService) downloadFromS3(attachment *store.Attachment) ([]byte
 }
 
 // getS3PresignedURL generates a presigned URL for direct S3 access.
-func (s *FileServerService) getS3PresignedURL(ctx context.Context, attachment *store.Attachment) (string, error) {
+func (s *FileServerService) getS3PresignedURL(ctx context.Context, attachment *store.Attachment, original bool) (string, error) {
 	client, s3Object, err := s.createS3Client(attachment)
 	if err != nil {
 		return "", err
 	}
 
-	url, err := client.PresignGetObject(ctx, s3Object.Key)
+	var presignOptions *s3.PresignGetObjectOptions
+	if !original && strings.HasPrefix(attachment.Type, "image/") {
+		instanceStorageSetting, err := s.Store.GetInstanceStorageSetting(ctx)
+		if err == nil && instanceStorageSetting.GetS3Config() != nil {
+			s3Config := instanceStorageSetting.GetS3Config()
+			if s3Config.EnableImageProcessing && s3Config.ImageProcessingQueryKey != "" && s3Config.ImageProcessingQueryValue != "" {
+				presignOptions = &s3.PresignGetObjectOptions{
+					QueryKey:   s3Config.ImageProcessingQueryKey,
+					QueryValue: s3Config.ImageProcessingQueryValue,
+				}
+			}
+		}
+	}
+
+	url, err := client.PresignGetObject(ctx, s3Object.Key, presignOptions)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to presign URL")
 	}
 	return url, nil
+}
+
+func (*FileServerService) isOriginalImageRequest(c *echo.Context) bool {
+	original := c.QueryParam("original")
+	return original == "1" || strings.EqualFold(original, "true")
 }
 
 // =============================================================================
